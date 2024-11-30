@@ -1,0 +1,7 @@
+name: weather-monitor
+main: deploy.py
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: Weather monitoring application using GCP Cloud Functions and Cloud Scheduler
