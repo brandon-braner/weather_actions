@@ -7,6 +7,19 @@ config = Config()
 project = config.require('project')
 region = config.get('region') or 'us-central1'
 
+
+
+# Enable the Required Services
+
+required_services = {
+    "secret-manager-api": "secretmanager.googleapis.com"
+}
+for key, service in required_services.items():
+    gcp.projects.Service(
+        key,
+        service=service
+    )
+
 # Create a service account for the Cloud Function
 function_sa = gcp.serviceaccount.Account('weather-monitor-sa',
     account_id='weather-monitor-sa',
@@ -35,16 +48,6 @@ bucket_object = gcp.storage.BucketObject('weather-monitor-function-source',
     bucket=bucket.name,
     source=pulumi.FileArchive('./src'))
 
-# Check if the function already exists in GCP
-# existing_function = gcp.cloudfunctionsv2.get_function(
-#     name="weather-monitor",
-#     location=region
-# )
-existing_function = False
-# if existing_function:
-#     function_url = existing_function.url
-#     pulumi.log.info("Function already exists, skipping creation")
-# else:
 # Create the Cloud Function
 function = gcp.cloudfunctionsv2.Function('weather-monitor',
     name='weather-monitor',
@@ -58,18 +61,19 @@ function = gcp.cloudfunctionsv2.Function('weather-monitor',
                 'bucket':bucket.name,
                 'object':bucket_object.name
             }
-        },
-        'environment_variables':{
-            'OPENWEATHER_API_KEY':config.require('openweather_api_key'),
-            'WEATHER_LAT':config.get('weather_lat') or '40.7128',
-            'WEATHER_LON':config.get('weather_lon') or '-74.0060'
         }
     },
     service_config={
         'max_instance_count':1,
         'available_memory':'256Mi',
         'timeout_seconds':60,
-        'service_account_email':function_sa.email
+        'service_account_email':function_sa.email,
+        'ingress_settings':'ALLOW_ALL',
+        'environment_variables':{
+            'WEATHER_LAT':config.get('weather_lat') or '40.7128',
+            'WEATHER_LON':config.get('weather_lon') or '-74.0060',
+            'GCP_PROJECT':config.get('gcp:project')
+        }
     }
 )
 

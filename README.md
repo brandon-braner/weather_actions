@@ -20,7 +20,6 @@ pip install -r requirements.txt
 ```bash
 pulumi stack init dev
 pulumi config set gcp:project YOUR_PROJECT_ID
-pulumi config set openweather_api_key --secret YOUR_API_KEY
 pulumi config set weather_lat YOUR_LATITUDE  # Optional, defaults to NYC
 pulumi config set weather_lon YOUR_LONGITUDE # Optional, defaults to NYC
 ```
