@@ -2,34 +2,18 @@ import os
 import functions_framework
 import requests
 from datetime import datetime
-from weather.weather_codes import get_weather_type, get_weather_description
-
-def check_for_snow(weather_data):
-    """Check if current weather conditions include snow"""
-    if 'weather' not in weather_data or not weather_data['weather']:
-        return False
-    
-    # Get the weather ID from the first weather condition
-    weather_id = str(weather_data['weather'][0]['id'])
-    weather_type = get_weather_type(weather_id)
-    
-    return weather_type == "Snow"
-
-def notify_ifttt():
-    """Mock function to notify IFTTT"""
-    # TODO: Implement actual IFTTT integration
-    print("IFTTT notification sent: It's snowing!")
-    return True
-
+from weather.weather_codes import is_valid_weather_type
+from utils.secrets import get_secret
+from weather import handle_weather_type
 @functions_framework.http
 def check_weather(request):
     """Cloud Function entry point"""
     try:
-        # Get environment variables
-        api_key = os.environ.get('OPENWEATHER_API_KEY')
+        # TODO update this to take these params from request  
         lat = os.environ.get('WEATHER_LAT', '40.7128')  # Default to NYC
         lon = os.environ.get('WEATHER_LON', '-74.0060')
 
+        api_key = get_secret("OPENWEATHER_API_KEY")
         if not api_key:
             raise ValueError("OpenWeather API key not found in environment variables")
 
@@ -39,27 +23,11 @@ def check_weather(request):
         response.raise_for_status()
         weather_data = response.json()
 
-        # Check if it's snowing
-        if check_for_snow(weather_data):
-            notify_ifttt()
-            return {
-                "message": "Snow detected! IFTTT notification sent.",
-                "weather": {
-                    "type": "Snow",
-                    "description": get_weather_description(weather_data['weather'][0]['id'])
-                },
-                "timestamp": datetime.now().isoformat()
-            }
-        
-        # Return current weather info even if it's not snowing
-        return {
-            "message": "No snow detected",
-            "weather": {
-                "type": get_weather_type(weather_data['weather'][0]['id']),
-                "description": get_weather_description(weather_data['weather'][0]['id'])
-            },
-            "timestamp": datetime.now().isoformat()
-        }
+        weather_type = weather_data['weather']['main']
+        valid_weather_type = is_valid_weather_type(weather_type)
+
+        if valid_weather_type:
+            handle_weather_type(weather_type)
 
     except Exception as e:
         print(f"Error: {str(e)}")
